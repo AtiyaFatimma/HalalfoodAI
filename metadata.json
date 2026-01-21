@@ -1,0 +1,8 @@
+{
+  "name": "HalalFind AI",
+  "description": "An AI-powered discovery app for finding Halal restaurants, verifying food ingredients, and getting Islamic dietary guidance worldwide.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
