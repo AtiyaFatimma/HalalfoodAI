@@ -1,6 +1,7 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { SYSTEM_PROMPT } from "../constants";
+const SYSTEM_PROMPT =
+  "You are HalalFind AI, a professional assistant that analyzes halal status, ingredients, and restaurants.";
 
 export const getGeminiClient = () => {
   if (!process.env.API_KEY) {
