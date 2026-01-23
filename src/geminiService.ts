@@ -1,96 +1,126 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const SYSTEM_PROMPT =
-  "You are HalalFind AI, a professional assistant that analyzes halal status, ingredients, and restaurants.";
+const SYSTEM_PROMPT = `You are HalalFind AI, a professional assistant specializing in halal food, ingredients, and Islamic dietary guidelines. 
+Provide accurate, helpful information about:
+- Halal restaurants and food establishments
+- Ingredient analysis (halal/haram status)
+- Islamic dietary laws and requirements
+- Food certification and verification
+
+Be professional, concise, and use **bold text** for important terms.`;
 
 export const getGeminiClient = () => {
-  if (!import.meta.env.VITE_API_KEY) {
-    throw new Error("API Key is missing.");
+  const apiKey = import.meta.env.VITE_API_KEY;
+  if (!apiKey) {
+    throw new Error("VITE_API_KEY is missing. Please add it to your environment variables.");
   }
-  return new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
+  return new GoogleGenerativeAI(apiKey);
 };
 
-export const findHalalRestaurants = async (query: string, location?: { lat: number, lng: number }) => {
-  const ai = getGeminiClient();
-  const locationContext = location ? ` near coordinates ${location.lat}, ${location.lng}` : "";
-  
-  const prompt = `Quick search: "${query}"${locationContext}. List the top 3-5 Halal places. For the summary, use **bold text** for important keywords. Return JSON only.`;
-  
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            summary: { type: Type.STRING },
-            restaurants: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  name: { type: Type.STRING },
-                  address: { type: Type.STRING },
-                  cuisine: { type: Type.STRING },
-                  halalStatus: { type: Type.STRING },
-                  description: { type: Type.STRING }
-                },
-                required: ["name", "address", "cuisine", "halalStatus"]
-              }
-            }
-          },
-          required: ["summary", "restaurants"]
-        }
-      }
-    });
+// Find halal restaurants
+export const findHalalRestaurants = async (query: string) => {
+  const genAI = getGeminiClient();
+  const model = genAI.getGenerativeModel({ 
+    model: "gemini-1.5-flash",
+    systemInstruction: SYSTEM_PROMPT
+  });
 
-    const data = JSON.parse(response.text || "{}");
+  const prompt = `Search for halal restaurants based on this query: "${query}"
+
+Please provide:
+1. A brief summary of halal dining options for this search
+2. List 3-5 specific halal restaurant recommendations with:
+   - Restaurant name
+   - Approximate location/area
+   - Type of cuisine
+   - Halal certification status (if known)
+   - Brief description
+
+Format your response professionally with **bold** for restaurant names and key terms.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+    
     return {
-      summary: data.summary || "Top verified results found for your search:",
-      restaurants: data.restaurants || [],
-      grounding: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
+      summary: text,
+      error: null
     };
   } catch (error: any) {
-    console.error("Search error:", error);
-    throw new Error("Fast search failed. Try a broader location or food type.");
+    console.error("Restaurant search error:", error);
+    return {
+      summary: null,
+      error: "Unable to search for restaurants. Please check your internet connection and try again."
+    };
   }
 };
 
-export const analyzeIngredients = async (imageData: string) => {
-  const ai = getGeminiClient();
+// Analyze ingredients from image
+export const analyzeIngredients = async (imageData: string, mimeType: string = 'image/jpeg') => {
+  const genAI = getGeminiClient();
+  const model = genAI.getGenerativeModel({ 
+    model: "gemini-1.5-flash",
+    systemInstruction: SYSTEM_PROMPT
+  });
+
+  const prompt = `Analyze this product image/label for halal status.
+
+Please examine:
+1. Ingredient list
+2. Any certifications or halal symbols
+3. Potential haram ingredients (pork, alcohol, non-halal gelatin, etc.)
+4. QR code information if visible
+
+Provide:
+- **Verdict**: HALAL, HARAM, or DOUBTFUL
+- **Key Ingredients**: List concerning ingredients in **bold**
+- **Explanation**: Brief reasoning for your verdict
+- **Recommendation**: What the user should do
+
+Be professional and concise.`;
+
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: {
-        parts: [
-          { inlineData: { data: imageData, mimeType: 'image/jpeg' } },
-          { text: "Examine this product label or barcode. Identify Halal/Haram status. Use **bold** for ingredient names and the final Verdict. Be concise and professional." }
-        ]
+    const imagePart = {
+      inlineData: {
+        data: imageData,
+        mimeType: mimeType,
       },
-      config: { systemInstruction: SYSTEM_PROMPT }
-    });
-    return response.text;
-  } catch (error) {
-    return "Verification error. Please ensure the label is clearly visible under good lighting.";
+    };
+
+    const result = await model.generateContent([prompt, imagePart]);
+    const response = result.response;
+    return response.text();
+  } catch (error: any) {
+    console.error("Ingredient analysis error:", error);
+    return "**Analysis Failed**\n\nUnable to analyze the image. Please ensure:\n- The image is clear and well-lit\n- Ingredient labels are visible\n- The file size is not too large\n\nTry taking another photo.";
   }
 };
 
-export const chatWithAI = async (message: string, history: any[]) => {
-  const ai = getGeminiClient();
+// Chat with AI
+export const chatWithAI = async (message: string, history: Array<{role: string, content: string}>) => {
+  const genAI = getGeminiClient();
+  const model = genAI.getGenerativeModel({ 
+    model: "gemini-1.5-flash",
+    systemInstruction: SYSTEM_PROMPT + "\n\nUse **bold text** for key Islamic terms, ingredients, and important points."
+  });
+
   try {
-    const chat = ai.chats.create({
-      model: 'gemini-3-flash-preview',
-      config: { 
-        systemInstruction: SYSTEM_PROMPT + " IMPORTANT: Use professional formatting with **bold text** for key terms, ingredients, or Islamic rulings."
-      },
-      history: history
+    // Convert history to Gemini format
+    const chatHistory = history.map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content }]
+    }));
+
+    const chat = model.startChat({
+      history: chatHistory,
     });
-    const response = await chat.sendMessage({ message });
-    return response.text;
-  } catch (error) {
-    return "Expert service is currently busy. Please try asking your question again in a moment.";
+
+    const result = await chat.sendMessage(message);
+    const response = result.response;
+    return response.text();
+  } catch (error: any) {
+    console.error("Chat error:", error);
+    return "I'm having trouble responding right now. Please try again in a moment.";
   }
 };
