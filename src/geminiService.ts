@@ -1,20 +1,19 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
+
 const SYSTEM_PROMPT =
   "You are HalalFind AI, a professional assistant that analyzes halal status, ingredients, and restaurants.";
 
 export const getGeminiClient = () => {
-  if (!process.env.API_KEY) {
+  if (!import.meta.env.VITE_API_KEY) {
     throw new Error("API Key is missing.");
   }
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  return new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
 };
 
 export const findHalalRestaurants = async (query: string, location?: { lat: number, lng: number }) => {
   const ai = getGeminiClient();
   const locationContext = location ? ` near coordinates ${location.lat}, ${location.lng}` : "";
   
-  // High-speed optimized prompt with structural bolding request
   const prompt = `Quick search: "${query}"${locationContext}. List the top 3-5 Halal places. For the summary, use **bold text** for important keywords. Return JSON only.`;
   
   try {
@@ -27,7 +26,7 @@ export const findHalalRestaurants = async (query: string, location?: { lat: numb
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            summary: { type: Type.STRING, description: "Professional summary using **bold** for emphasis on locations and status." },
+            summary: { type: Type.STRING },
             restaurants: {
               type: Type.ARRAY,
               items: {
@@ -85,7 +84,7 @@ export const chatWithAI = async (message: string, history: any[]) => {
     const chat = ai.chats.create({
       model: 'gemini-3-flash-preview',
       config: { 
-        systemInstruction: SYSTEM_PROMPT + " IMPORTANT: Use professional formatting with **bold text** for key terms, ingredients, or Islamic rulings. Do not use raw stars, use markdown bolding." 
+        systemInstruction: SYSTEM_PROMPT + " IMPORTANT: Use professional formatting with **bold text** for key terms, ingredients, or Islamic rulings."
       },
       history: history
     });
