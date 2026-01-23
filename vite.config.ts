@@ -1,8 +1,8 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
-// Vercel + React + Tailwind friendly config
 export default defineConfig({
+  root: './', // 👈 This tells Vite to use the root folder
   plugins: [react()],
   server: {
     port: 5173,
@@ -10,6 +10,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false
+    sourcemap: false,
+    emptyOutDir: true
   }
-})
+});
