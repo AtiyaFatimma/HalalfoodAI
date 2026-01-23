@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="theme-color" content="#059669">
     <title>HalalFind AI - Halal Discovery & Guidance</title>
@@ -18,10 +18,12 @@
         body {
           font-family: 'Inter', sans-serif;
           background-color: #f8fafc;
+          /* Handle mobile notches */
           padding-top: var(--sat);
           padding-bottom: var(--sab);
-          overscroll-behavior-y: none;
+          overscroll-behavior-y: none; /* Prevent pull-to-refresh if not needed */
         }
+        /* Custom scrollbar for a cleaner mobile look */
         ::-webkit-scrollbar {
           width: 0px;
           background: transparent;
@@ -30,6 +32,6 @@
 </head>
 <body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>  <!-- Add this -->
+    <script type="module" src="/src/index.tsx"></script>
 </body>
 </html>
